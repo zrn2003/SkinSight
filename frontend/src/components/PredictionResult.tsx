@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle, Info, HelpCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, HelpCircle, Printer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ConfidenceBar from "./ConfidenceBar";
@@ -16,11 +16,16 @@ export interface Prediction {
 
 interface PredictionResultProps {
   predictions: Prediction[];
+  imagePreview?: string | null;
   onReset: () => void;
 }
 
-const PredictionResult = ({ predictions, onReset }: PredictionResultProps) => {
+const PredictionResult = ({ predictions, imagePreview, onReset }: PredictionResultProps) => {
   const topPrediction = predictions[0];
+
+  const handlePrintReport = () => {
+    window.print();
+  };
 
   const getSeverityConfig = (severity: Prediction["severity"]) => {
     switch (severity) {
@@ -63,37 +68,51 @@ const PredictionResult = ({ predictions, onReset }: PredictionResultProps) => {
   const TopIcon = topConfig.icon;
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6 animate-slide-up">
+    <div className="w-full max-w-2xl mx-auto space-y-6 animate-slide-up print:text-black">
+      {/* Printable Report Header (hidden normally, visible during print) */}
+      <div className="hidden print:block mb-6 text-center border-b pb-4">
+        <h1 className="text-2xl font-bold">SkinSight AI Diagnostic Screening Report</h1>
+        <p className="text-sm text-gray-500">Generated on {new Date().toLocaleString()}</p>
+      </div>
+
       {/* Top Prediction Card */}
       <Card className={cn(
         "p-6 border-2 shadow-elevated",
         topConfig.borderColor,
         topConfig.bgColor
       )}>
-        <div className="flex flex-col sm:flex-row items-start gap-4">
-          <div className={cn(
-            "w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shrink-0",
-            topConfig.bgColor
-          )}>
-            <TopIcon className={cn("w-6 h-6 sm:w-7 sm:h-7", topConfig.color)} />
-          </div>
+        <div className="flex flex-col sm:flex-row items-start gap-5">
+          {imagePreview && (
+            <div className="w-full sm:w-36 h-36 rounded-xl overflow-hidden border border-border shrink-0 bg-black/5">
+              <img
+                src={imagePreview}
+                alt="Analyzed skin image"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
 
           <div className="flex-1 w-full min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Primary Detection
+                Primary AI Detection
               </span>
+              <div className={cn("px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1", topConfig.bgColor, topConfig.color)}>
+                <TopIcon className="w-3.5 h-3.5" />
+                {topPrediction.severity.toUpperCase()} RISK
+              </div>
             </div>
+
             <h3 className="font-heading font-bold text-2xl text-foreground mb-2">
               {topPrediction.label}
             </h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
               {topPrediction.description}
             </p>
 
             <div className="space-y-1">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-muted-foreground">Confidence score</span>
+                <span className="text-muted-foreground">Confidence Score</span>
                 <span className={cn("font-bold", topConfig.color)}>
                   {Number.isFinite(topPrediction.confidence)
                     ? `${topPrediction.confidence.toFixed(1)}%`
@@ -118,7 +137,7 @@ const PredictionResult = ({ predictions, onReset }: PredictionResultProps) => {
             <Card className="p-5 border-success/30 bg-success/5 shadow-sm hover-lift">
               <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
                 <CheckCircle className="w-5 h-5 text-success shrink-0" />
-                What to do
+                Recommended Actions
               </h4>
               <ul className="space-y-2">
                 {topPrediction.whatToDo.map((item, idx) => (
@@ -135,7 +154,7 @@ const PredictionResult = ({ predictions, onReset }: PredictionResultProps) => {
             <Card className="p-5 border-destructive/30 bg-destructive/5 shadow-sm hover-lift">
               <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
                 <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-                What NOT to do
+                Precautions to Take
               </h4>
               <ul className="space-y-2">
                 {topPrediction.whatNotToDo.map((item, idx) => (
@@ -157,7 +176,7 @@ const PredictionResult = ({ predictions, onReset }: PredictionResultProps) => {
             <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div>
               <h4 className="font-semibold text-foreground mb-1">
-                Important Information
+                Clinical Context
               </h4>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {topPrediction.additionalInfo}
@@ -167,11 +186,11 @@ const PredictionResult = ({ predictions, onReset }: PredictionResultProps) => {
         </Card>
       )}
 
-      {/* Other Predictions */}
+      {/* Differential Diagnosis (All Model Class Probabilities) */}
       {predictions.length > 1 && (
         <div className="space-y-3">
           <h4 className="font-heading font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-            Other Possible Conditions
+            Differential Diagnosis Breakdown
           </h4>
 
           <div className="grid gap-3">
@@ -219,21 +238,25 @@ const PredictionResult = ({ predictions, onReset }: PredictionResultProps) => {
         </div>
       )}
 
-      {/* Disclaimer & Actions */}
+      {/* Medical Disclaimer */}
       <Card className="p-4 bg-accent/50 border-accent">
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 text-accent-foreground shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm text-accent-foreground">
-              This analysis is for informational purposes only and should not replace professional medical advice.
-              Please consult a dermatologist for accurate diagnosis.
+            <p className="text-xs text-accent-foreground leading-relaxed">
+              <strong>Medical Disclaimer:</strong> This AI tool is intended for informational and preliminary screening support only. It does not provide medical diagnosis. Always seek the advice of a qualified dermatologist or medical professional with any questions regarding skin conditions.
             </p>
           </div>
         </div>
       </Card>
 
-      <div className="flex justify-center pt-2">
-        <Button variant="hero" size="lg" onClick={onReset}>
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2 print:hidden">
+        <Button variant="outline" size="lg" onClick={handlePrintReport} className="gap-2 w-full sm:w-auto">
+          <Printer className="w-4 h-4" />
+          Print / Export Report
+        </Button>
+        <Button variant="hero" size="lg" onClick={onReset} className="w-full sm:w-auto">
           Analyze Another Image
         </Button>
       </div>

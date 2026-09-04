@@ -207,9 +207,15 @@ async def predict(file: UploadFile = File(...)):
         classes = ["Melanoma", "Tinea"]
         result_class = classes[fusion_idx]
 
+        probabilities = {
+            classes[i]: float(fusion_probs[0][i].item())
+            for i in range(len(classes))
+        }
+
         return {
             "class": result_class,
             "confidence": fusion_conf,
+            "probabilities": probabilities,
             "stage": "Diagnosis",
             "filter_check": "Passed (Skin)",
             "filter_confidence": filter_conf
